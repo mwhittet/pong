@@ -85,6 +85,38 @@ class Pong {
     };
     callback();
 
+    this.CHAR_PIXEL = 10;
+
+    // Iterate through the array and paint 1's white.
+    this.CHARS = [
+      '111101101101111',
+      '010010010010010',
+      '111001111100111',
+      '111001111001111',
+      '101101111001001',
+      '111100111001111',
+      '111100111101111',
+      '111001001001001',
+      '111101111101111',
+      '111101111001111',
+    ].map(str => {
+      const canvas = document.createElement('canvas');
+      canvas.height = this.CHAR_PIXEL * 5;
+      canvas.width = this.CHAR_PIXEL * 3;
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#fff';
+      str.split('').forEach((fill, i) => {
+        if (fill === '1') {
+          context.fillRect(
+            (i % 3) * this.CHAR_PIXEL, 
+            (i / 3 | 0) * this.CHAR_PIXEL,
+            this.CHAR_PIXEL,
+            this.CHAR_PIXEL);
+        }
+      });
+      return canvas;
+    });
+
     this.reset();
   }
 
@@ -100,19 +132,35 @@ class Pong {
 
   draw() {
     // Fill the canvas and draw it.
-    this._context.fillStyle = '#000';
+    this._context.fillStyle = '#00004c';
     this._context.fillRect(0, 0, this._canvas.width, this._canvas.height);
 
     this.drawRect(this.ball);
     this.players.forEach(player => this.drawRect(player));
+
+    this.drawScore();
   }
 
   drawRect(rect) {
-    // Draw the ball.
     this._context.fillStyle = '#fff';
     this._context.fillRect(rect.left, rect.top, rect.size.x, rect.size.y);
   }
 
+  // Dra the score.
+  drawScore() {
+    const align = this._canvas.width / 3 // Divide the canvas into 3 segments.
+    const CHAR_W = this.CHAR_PIXEL * 4;
+    this.players.forEach((player, index) => {
+      const chars = player.score.toString().split('');
+      const offset = align * (index + 1) - (CHAR_W * chars.length / 2) + this.CHAR_PIXEL / 2;
+
+      chars.forEach((char, pos) => {
+        this._context.drawImage(this.CHARS[char|0], offset + pos * CHAR_W, 20);
+      });
+    });
+  }
+
+  // Reset the game.
   reset() {
     this.ball.pos.x = this._canvas.width / 2;
     this.ball.pos.y = this._canvas.height / 2;;
@@ -120,6 +168,7 @@ class Pong {
     this.ball.vel.y = 0;
   }
 
+  // Start the game.
   start() {
     if (this.ball.vel.x === 0 && this.ball.vel.y === 0) {
       this.ball.vel.x = 300 * (Math.random() > .5 ? 1 : -1); // If it's more then .5, multiply by 1, if less, multipy by -1. 
@@ -159,7 +208,8 @@ const pong = new Pong(canvas);
 
 // Add in our player control.
 canvas.addEventListener('mousemove', event => {
-  pong.players[0].pos.y = event.offsetY;
+  const scale = event.offsetY / event.target.getBoundingClientRect().height;
+  pong.players[0].pos.y = canvas.height * scale;
 });
 
 // Run the start method on click.

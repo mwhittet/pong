@@ -4,6 +4,16 @@ class Vec {
     this.x = x;
     this.y = y;
   }
+
+  get len() {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
+
+  set len(value) {
+    const fact = value / this.len;
+    this.x *= fact;
+    this.y *= fact;
+  }
 }
 
 // Data structure for our Rectangles.
@@ -53,11 +63,6 @@ class Pong {
     this._context = canvas.getContext('2d');
 
     this.ball = new Ball;
-    this.ball.pos.x = 100;
-    this.ball.pos.y = 50;
-
-    this.ball.vel.x = 100;
-    this.ball.vel.y = 100;
 
     this.players = [
       new Player,
@@ -79,6 +84,18 @@ class Pong {
       requestAnimationFrame(callback);
     };
     callback();
+
+    this.reset();
+  }
+
+  // Collisation detection.
+  collide(player, ball) {
+    if (player.left < ball.right && player.right > ball.left && player.top < ball.bottom && player.bottom > ball.top) {
+      const len = ball.vel.len;
+      ball.vel.x = -ball.vel.x;
+      ball.vel.y += 300 * (Math.random() - .5);
+      ball.vel.len = len * 1.05;
+    }
   }
 
   draw() {
@@ -96,6 +113,21 @@ class Pong {
     this._context.fillRect(rect.left, rect.top, rect.size.x, rect.size.y);
   }
 
+  reset() {
+    this.ball.pos.x = this._canvas.width / 2;
+    this.ball.pos.y = this._canvas.height / 2;;
+    this.ball.vel.x = 0;
+    this.ball.vel.y = 0;
+  }
+
+  start() {
+    if (this.ball.vel.x === 0 && this.ball.vel.y === 0) {
+      this.ball.vel.x = 300 * (Math.random() > .5 ? 1 : -1); // If it's more then .5, multiply by 1, if less, multipy by -1. 
+      this.ball.vel.y = 300 * (Math.random() * 2 -1);
+      this.ball.vel.len = 200;
+    }
+  }
+
   update(dt) {
     // Movement of the ball is relative to the time difference of the update methods.
     this.ball.pos.x += this.ball.vel.x * dt;
@@ -103,15 +135,34 @@ class Pong {
 
     // Dectect if the ball hits the edges.
     if (this.ball.left < 0 || this.ball.right > this._canvas.width) {
-      this.ball.vel.x = -this.ball.vel.x;
+      const playerId = this.ball.vel.x < 0 | 0; // Returns true or false and converts to an integer.
+      this.players[playerId].score++;
+      this.reset();
     }
     if (this.ball.top < 0 || this.ball.bottom > this._canvas.height) {
       this.ball.vel.y = -this.ball.vel.y;
     }
 
+    // Unfair AI, our opponent position matches the ball!
+    this.players[1].pos.y = this.ball.pos.y;
+
+    // Check for collison.
+    this.players.forEach(player => this.collide(player, this.ball));
+
+    // Call draw method.
     this.draw();
   }
 }
 
 const canvas = document.getElementById('pong');
 const pong = new Pong(canvas);
+
+// Add in our player control.
+canvas.addEventListener('mousemove', event => {
+  pong.players[0].pos.y = event.offsetY;
+});
+
+// Run the start method on click.
+canvas.addEventListener('click', event => {
+  pong.start();
+});

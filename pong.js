@@ -5,14 +5,14 @@ class Vec {
     this.y = y;
   }
 
-  get len() {
+  get len() { // The lenth of the vector (hypotenuse of a triangle).
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
-  set len(value) {
-    const fact = value / this.len;
-    this.x *= fact;
-    this.y *= fact;
+  set len(value) { 
+    const fact = value / this.len; // Calculate our factor.
+    this.x *= fact; // Muliply the vectors by the factor.
+    this.y *= fact; 
   }
 }
 
@@ -40,10 +40,10 @@ class Rect {
   }
 }
 
-// Data structure for our Rectangles.
+// Ball.
 class Ball extends Rect {
   constructor() {
-    super(10, 10);
+    super(10, 10); // Set the ball height and width.
     this.vel = new Vec;
   }
 }
@@ -51,34 +51,62 @@ class Ball extends Rect {
 // Player.
 class Player extends Rect {
   constructor() {
-    super(20, 100);
-    this.score = 0;
+    super(20, 100); // Set the Player height and width.
+    this.score = 0; // Score is zero initially.
   }
 }
 
-//
+// Half.
+class Half extends Rect {
+  constructor() {
+    super(10, 50); // Sets the height and width of the half way line.rect
+  }
+}
+
+// Setup Pong.
 class Pong {
   constructor(canvas) {
     this._canvas = canvas;
     this._context = canvas.getContext('2d');
 
+    this._accumulator = 0;
+    this.step = 1/120;
+
     this.ball = new Ball;
 
+    this.halfs = [
+      new Half,
+      new Half,
+      new Half,
+      new Half
+    ];
+
+    // The players.
     this.players = [
       new Player,
       new Player
     ];
 
-    this.players[0].pos.x = 40; // Us
-    this.players[1].pos.x = this._canvas.width - 40; // The competition
-    this.players.forEach(player => {
+    this.halfs.forEach(half => { // Initial Player position on the canvas.
+      half.pos.x = this._canvas.width / 2;
+    });
+
+    this.halfs[0].pos.y = 50;
+    this.halfs[1].pos.y = 150;
+    this.halfs[2].pos.y = 250;
+    this.halfs[3].pos.y = 350;
+
+    this.players[0].pos.x = 100; // Us.
+    this.players[1].pos.x = this._canvas.width - 100; // The competition.
+    this.players.forEach(player => { // Initial Player position on the canvas.
       player.pos.y = this._canvas.height / 2;
     });
 
     let lastTime;
     const callback = (millis) => {
-      if (lastTime) { // If we have a lastTime
-        this.update((millis - lastTime) / 1000); // Calculate the diff & convert to whole seconds.
+      if (lastTime) {
+        this.update((millis - lastTime) / 1000);
+        this.draw();
       }
       lastTime = millis; // Set the time
       requestAnimationFrame(callback);
@@ -87,7 +115,7 @@ class Pong {
 
     this.CHAR_PIXEL = 10;
 
-    // Iterate through the array and paint 1's white.
+    // Iterate through the array and paint 1's white, starts from 0 to 10.
     this.CHARS = [
       '111101101101111',
       '010010010010010',
@@ -120,33 +148,35 @@ class Pong {
     this.reset();
   }
 
-  // Collisation detection.
+  // Collision detection.
   collide(player, ball) {
     if (player.left < ball.right && player.right > ball.left && player.top < ball.bottom && player.bottom > ball.top) {
       const len = ball.vel.len;
       ball.vel.x = -ball.vel.x;
       ball.vel.y += 300 * (Math.random() - .5);
-      ball.vel.len = len * 1.05;
+      ball.vel.len = len * 1.25;
     }
   }
 
+  // Draw the canvas, the players, ball and score.
   draw() {
-    // Fill the canvas and draw it.
     this._context.fillStyle = '#00004c';
     this._context.fillRect(0, 0, this._canvas.width, this._canvas.height);
 
     this.drawRect(this.ball);
+    this.halfs.forEach(half => this.drawRect(half));
     this.players.forEach(player => this.drawRect(player));
 
     this.drawScore();
   }
 
+  // Draw our rectangles.
   drawRect(rect) {
     this._context.fillStyle = '#fff';
     this._context.fillRect(rect.left, rect.top, rect.size.x, rect.size.y);
   }
 
-  // Dra the score.
+  // Draw the score.
   drawScore() {
     const align = this._canvas.width / 3 // Divide the canvas into 3 segments.
     const CHAR_W = this.CHAR_PIXEL * 4;
@@ -177,7 +207,8 @@ class Pong {
     }
   }
 
-  update(dt) {
+  // Movement of the ball, edges, our unfair AI and player collision.
+  simulate(dt) {
     // Movement of the ball is relative to the time difference of the update methods.
     this.ball.pos.x += this.ball.vel.x * dt;
     this.ball.pos.y += this.ball.vel.y * dt;
@@ -197,12 +228,19 @@ class Pong {
 
     // Check for collison.
     this.players.forEach(player => this.collide(player, this.ball));
+  }
 
-    // Call draw method.
-    this.draw();
+  // Update the game.
+  update(dt) {
+    this._accumulator += dt;
+    while(this._accumulator > this.step) {
+      this.simulate(this.step);
+      this._accumulator -= this.step;
+    }
   }
 }
 
+// Access our canvas and set up our pong.
 const canvas = document.getElementById('pong');
 const pong = new Pong(canvas);
 
